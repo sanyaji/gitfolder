@@ -73,19 +73,35 @@ export class GitService {
 
 	async stageFile(uri: vscode.Uri) {
 		if (this.repo) {
-			await this.repo.add([uri]);
+			try {
+				await this.repo.add([uri.fsPath]);
+			} catch (error) {
+				console.error('Error staging file:', error);
+				throw error;
+			}
 		}
 	}
 
 	async unstageFile(uri: vscode.Uri) {
 		if (this.repo) {
-			await this.repo.revert([uri]);
+			try {
+				await this.repo.revert([uri.fsPath]);
+			} catch (error) {
+				console.error('Error unstaging file:', error);
+				throw error;
+			}
 		}
 	}
 
 	async stageFiles(uris: vscode.Uri[]) {
 		if (this.repo) {
-			await this.repo.add(uris);
+			try {
+				const paths = uris.map(uri => uri.fsPath);
+				await this.repo.add(paths);
+			} catch (error) {
+				console.error('Error staging files:', error);
+				throw error;
+			}
 		}
 	}
 

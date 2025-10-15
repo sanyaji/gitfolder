@@ -226,90 +226,110 @@ export function activate(context: vscode.ExtensionContext) {
 	// Add stage/unstage commands for SCM resources
 	context.subscriptions.push(
 		vscode.commands.registerCommand('gitfolder.stage', async (...args: any[]) => {
-			// Handle both array of resources and individual resources
-			let resourceStates: vscode.SourceControlResourceState[] = [];
-			
-			if (args.length > 0) {
-				if (Array.isArray(args[0])) {
-					resourceStates = args[0];
-				} else if (args[0]?.resourceUri) {
-					resourceStates = args;
+			try {
+				// Handle both array of resources and individual resources
+				let resourceStates: vscode.SourceControlResourceState[] = [];
+				
+				if (args.length > 0) {
+					if (Array.isArray(args[0])) {
+						resourceStates = args[0];
+					} else if (args[0]?.resourceUri) {
+						resourceStates = args;
+					}
 				}
-			}
 
-			if (resourceStates.length === 0) {
-				vscode.window.showErrorMessage('No files to stage');
-				return;
-			}
+				if (resourceStates.length === 0) {
+					vscode.window.showErrorMessage('No files to stage');
+					return;
+				}
 
-			const uris = resourceStates.map(r => r.resourceUri);
-			await gitService.stageFiles(uris);
-			scmProvider.refresh();
-			vscode.window.showInformationMessage(`Staged ${uris.length} file(s)`);
+				const uris = resourceStates.map(r => r.resourceUri);
+				await gitService.stageFiles(uris);
+				scmProvider.refresh();
+				vscode.window.showInformationMessage(`Staged ${uris.length} file(s)`);
+			} catch (error) {
+				console.error('Error in gitfolder.stage:', error);
+				vscode.window.showErrorMessage(`Failed to stage files: ${error}`);
+			}
 		})
 	);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('gitfolder.stageFile', async (item: any) => {
-			if (item && (item.type === 'file' || item.type === 'file-local')) {
-				await gitService.stageFile(vscode.Uri.file(item.filePath));
-				vscode.window.showInformationMessage('File staged');
+			try {
+				if (item && (item.type === 'file' || item.type === 'file-local')) {
+					await gitService.stageFile(vscode.Uri.file(item.filePath));
+					vscode.window.showInformationMessage('File staged');
+				}
+			} catch (error) {
+				console.error('Error in gitfolder.stageFile:', error);
+				vscode.window.showErrorMessage(`Failed to stage file: ${error}`);
 			}
 		})
 	);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('gitfolder.stageGroup', async (item: any) => {
-			if (item && item.type === 'group') {
-				const groups = await storageManager.getGroups();
-				const group = groups.find((g: { id: string; name: string; files: any[] }) => g.id === item.groupId);
-				if (group) {
-					// Only stage non-local files
-					const filesToStage = group.files
-						.filter((f: { path: string; isLocal: boolean }) => !f.isLocal)
-						.map((f: { path: string; isLocal: boolean }) => vscode.Uri.file(f.path));
-					
-					if (filesToStage.length > 0) {
-						await gitService.stageFiles(filesToStage);
-						vscode.window.showInformationMessage(`Staged ${filesToStage.length} file(s) from "${item.label}"`);
-					} else {
-						vscode.window.showInformationMessage('No files to stage (all marked as local-only)');
+			try {
+				if (item && item.type === 'group') {
+					const groups = await storageManager.getGroups();
+					const group = groups.find((g: { id: string; name: string; files: any[] }) => g.id === item.groupId);
+					if (group) {
+						// Only stage non-local files
+						const filesToStage = group.files
+							.filter((f: { path: string; isLocal: boolean }) => !f.isLocal)
+							.map((f: { path: string; isLocal: boolean }) => vscode.Uri.file(f.path));
+						
+						if (filesToStage.length > 0) {
+							await gitService.stageFiles(filesToStage);
+							vscode.window.showInformationMessage(`Staged ${filesToStage.length} file(s) from "${item.label}"`);
+						} else {
+							vscode.window.showInformationMessage('No files to stage (all marked as local-only)');
+						}
 					}
 				}
+			} catch (error) {
+				console.error('Error in gitfolder.stageGroup:', error);
+				vscode.window.showErrorMessage(`Failed to stage group: ${error}`);
 			}
 		})
 	);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('gitfolder.stageAll', async (resourceGroup: vscode.SourceControlResourceGroup) => {
-			// Get group id from resource group
-			const groupId = resourceGroup.id;
-			
-			if (groupId === '__ungrouped__') {
-				// Stage all ungrouped
-				const uris = resourceGroup.resourceStates.map(r => r.resourceUri);
-				if (uris.length > 0) {
-					await gitService.stageFiles(uris);
-					scmProvider.refresh();
-					vscode.window.showInformationMessage(`Staged ${uris.length} file(s)`);
-				}
-			} else {
-				// Stage group (excluding local-only)
-				const groups = await storageManager.getGroups();
-				const group = groups.find((g: { id: string; name: string; files: any[] }) => g.id === groupId);
-				if (group) {
-					const filesToStage = group.files
-						.filter((f: { path: string; isLocal: boolean }) => !f.isLocal)
-						.map((f: { path: string; isLocal: boolean }) => vscode.Uri.file(f.path));
-					
-					if (filesToStage.length > 0) {
-						await gitService.stageFiles(filesToStage);
+			try {
+				// Get group id from resource group
+				const groupId = resourceGroup.id;
+				
+				if (groupId === '__ungrouped__') {
+					// Stage all ungrouped
+					const uris = resourceGroup.resourceStates.map(r => r.resourceUri);
+					if (uris.length > 0) {
+						await gitService.stageFiles(uris);
 						scmProvider.refresh();
-						vscode.window.showInformationMessage(`Staged ${filesToStage.length} file(s) from group`);
-					} else {
-						vscode.window.showInformationMessage('No files to stage (all marked as local-only)');
+						vscode.window.showInformationMessage(`Staged ${uris.length} file(s)`);
+					}
+				} else {
+					// Stage group (excluding local-only)
+					const groups = await storageManager.getGroups();
+					const group = groups.find((g: { id: string; name: string; files: any[] }) => g.id === groupId);
+					if (group) {
+						const filesToStage = group.files
+							.filter((f: { path: string; isLocal: boolean }) => !f.isLocal)
+							.map((f: { path: string; isLocal: boolean }) => vscode.Uri.file(f.path));
+						
+						if (filesToStage.length > 0) {
+							await gitService.stageFiles(filesToStage);
+							scmProvider.refresh();
+							vscode.window.showInformationMessage(`Staged ${filesToStage.length} file(s) from group`);
+						} else {
+							vscode.window.showInformationMessage('No files to stage (all marked as local-only)');
+						}
 					}
 				}
+			} catch (error) {
+				console.error('Error in gitfolder.stageAll:', error);
+				vscode.window.showErrorMessage(`Failed to stage files: ${error}`);
 			}
 		})
 	);
