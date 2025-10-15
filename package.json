@@ -1,0 +1,213 @@
+{
+  "name": "gitfolder",
+  "displayName": "GitFolder",
+  "description": "Organize and group git changes into custom folders, mark local-only changes",
+  "version": "0.0.1",
+  "publisher": "your-publisher-name",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "GitFolder",
+      "properties": {
+        "gitfolder.hideDefaultGit": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hide default Git source control provider (requires reload)"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "gitfolder.createGroup",
+        "title": "GitFolder: Create New Group",
+        "icon": "$(add)"
+      },
+      {
+        "command": "gitfolder.deleteGroup",
+        "title": "GitFolder: Delete Group",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "gitfolder.renameGroup",
+        "title": "GitFolder: Rename Group"
+      },
+      {
+        "command": "gitfolder.addFilesToGroup",
+        "title": "GitFolder: Add Files to Group"
+      },
+      {
+        "command": "gitfolder.removeFileFromGroup",
+        "title": "GitFolder: Remove File from Group",
+        "icon": "$(remove)"
+      },
+      {
+        "command": "gitfolder.markAsLocal",
+        "title": "GitFolder: Mark as Local Only",
+        "icon": "$(lock)"
+      },
+      {
+        "command": "gitfolder.unmarkAsLocal",
+        "title": "GitFolder: Unmark as Local",
+        "icon": "$(unlock)"
+      },
+      {
+        "command": "gitfolder.openFile",
+        "title": "GitFolder: Open File"
+      },
+      {
+        "command": "gitfolder.refresh",
+        "title": "GitFolder: Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "gitfolder.stageFile",
+        "title": "GitFolder: Stage File",
+        "icon": "$(add)"
+      },
+      {
+        "command": "gitfolder.stageGroup",
+        "title": "GitFolder: Stage All Files in Group",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "gitfolder.addToGroup",
+        "title": "GitFolder: Add to Group"
+      },
+      {
+        "command": "gitfolder.stage",
+        "title": "Stage Changes",
+        "icon": "$(add)"
+      },
+      {
+        "command": "gitfolder.stageAll",
+        "title": "Stage All Changes",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "gitfolder.commit",
+        "title": "Commit"
+      },
+      {
+        "command": "gitfolder.removeFromGroup",
+        "title": "Remove from Group",
+        "icon": "$(remove)"
+      },
+      {
+        "command": "gitfolder.moveToGroup",
+        "title": "Move to Group"
+      }
+    ],
+    "menus": {
+      "scm/title": [
+        {
+          "command": "gitfolder.createGroup",
+          "when": "scmProvider == gitfolder",
+          "group": "navigation"
+        },
+        {
+          "command": "gitfolder.refresh",
+          "when": "scmProvider == gitfolder",
+          "group": "navigation"
+        }
+      ],
+      "scm/resourceGroup/context": [
+        {
+          "command": "gitfolder.stageAll",
+          "when": "scmProvider == gitfolder",
+          "group": "inline"
+        }
+      ],
+      "scm/resourceState/context": [
+        {
+          "command": "gitfolder.stage",
+          "when": "scmProvider == gitfolder && scmResourceState =~ /gitfolder:(file|ungrouped)/",
+          "group": "inline"
+        },
+        {
+          "command": "gitfolder.removeFromGroup",
+          "when": "scmProvider == gitfolder && scmResourceState =~ /gitfolder:file/",
+          "group": "inline"
+        },
+        {
+          "command": "gitfolder.addToGroup",
+          "when": "scmProvider == gitfolder && scmResourceState == gitfolder:ungrouped"
+        },
+        {
+          "command": "gitfolder.moveToGroup",
+          "when": "scmProvider == gitfolder && scmResourceState =~ /gitfolder:file/"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "gitfolder.renameGroup",
+          "when": "view == gitfolderView && viewItem == group",
+          "group": "inline"
+        },
+        {
+          "command": "gitfolder.deleteGroup",
+          "when": "view == gitfolderView && viewItem == group",
+          "group": "inline"
+        },
+        {
+          "command": "gitfolder.addFilesToGroup",
+          "when": "view == gitfolderView && viewItem == group"
+        },
+        {
+          "command": "gitfolder.stageGroup",
+          "when": "view == gitfolderView && viewItem == group",
+          "group": "inline"
+        },
+        {
+          "command": "gitfolder.stageFile",
+          "when": "view == gitfolderView && (viewItem == file || viewItem == file-local)",
+          "group": "inline"
+        },
+        {
+          "command": "gitfolder.markAsLocal",
+          "when": "view == gitfolderView && viewItem == file",
+          "group": "inline"
+        },
+        {
+          "command": "gitfolder.unmarkAsLocal",
+          "when": "view == gitfolderView && viewItem == file-local",
+          "group": "inline"
+        },
+        {
+          "command": "gitfolder.removeFileFromGroup",
+          "when": "view == gitfolderView && viewItem =~ /file/",
+          "group": "inline"
+        },
+        {
+          "command": "gitfolder.addToGroup",
+          "when": "view == gitfolderView && viewItem == ungrouped-file"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "node ./esbuild.js",
+    "watch": "node ./esbuild.js --watch",
+    "package": "node ./esbuild.js --production",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^18.x",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "esbuild": "^0.19.8",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.2"
+  }
+}
