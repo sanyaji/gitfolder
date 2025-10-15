@@ -343,6 +343,54 @@ export function activate(context: vscode.ExtensionContext) {
 		})
 	);
 
+	// Unstage commands
+	context.subscriptions.push(
+		vscode.commands.registerCommand('gitfolder.unstage', async (...args: any[]) => {
+			try {
+				let resourceStates: vscode.SourceControlResourceState[] = [];
+				
+				if (args.length > 0) {
+					if (Array.isArray(args[0])) {
+						resourceStates = args[0];
+					} else if (args[0]?.resourceUri) {
+						resourceStates = args;
+					}
+				}
+
+				if (resourceStates.length === 0) {
+					vscode.window.showErrorMessage('No files to unstage');
+					return;
+				}
+
+				const uris = resourceStates.map(r => r.resourceUri);
+				await gitService.unstageFiles(uris);
+				scmProvider.refresh();
+				vscode.window.showInformationMessage(`Unstaged ${uris.length} file(s)`);
+			} catch (error) {
+				console.error('Error in gitfolder.unstage:', error);
+				vscode.window.showErrorMessage(`Failed to unstage files: ${error}`);
+			}
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('gitfolder.unstageAll', async (resourceGroup: vscode.SourceControlResourceGroup) => {
+			try {
+				if (resourceGroup.id === '__staged__') {
+					const uris = resourceGroup.resourceStates.map(r => r.resourceUri);
+					if (uris.length > 0) {
+						await gitService.unstageFiles(uris);
+						scmProvider.refresh();
+						vscode.window.showInformationMessage(`Unstaged ${uris.length} file(s)`);
+					}
+				}
+			} catch (error) {
+				console.error('Error in gitfolder.unstageAll:', error);
+				vscode.window.showErrorMessage(`Failed to unstage files: ${error}`);
+			}
+		})
+	);
+
 	// Remove from group - back to Changes
 	context.subscriptions.push(
 		vscode.commands.registerCommand('gitfolder.removeFromGroup', async (...args: any[]) => {

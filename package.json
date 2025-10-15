@@ -89,9 +89,19 @@
         "icon": "$(add)"
       },
       {
+        "command": "gitfolder.unstage",
+        "title": "Unstage Changes",
+        "icon": "$(remove)"
+      },
+      {
         "command": "gitfolder.stageAll",
         "title": "Stage All Changes",
         "icon": "$(check-all)"
+      },
+      {
+        "command": "gitfolder.unstageAll",
+        "title": "Unstage All Changes",
+        "icon": "$(discard)"
       },
       {
         "command": "gitfolder.commit",
@@ -145,6 +155,22 @@
         {
           "command": "gitfolder.moveToGroup",
           "when": "scmProvider == gitfolder && scmResourceState =~ /gitfolder:file/"
+        },
+        {
+          "command": "gitfolder.unstage",
+          "when": "scmProvider == gitfolder && scmResourceState == gitfolder:staged"
+        }
+      ],
+      "scm/resourceGroup/context": [
+        {
+          "command": "gitfolder.stageAll",
+          "when": "scmProvider == gitfolder && scmResourceGroup != __staged__",
+          "group": "inline"
+        },
+        {
+          "command": "gitfolder.unstageAll",
+          "when": "scmProvider == gitfolder && scmResourceGroup == __staged__",
+          "group": "inline"
         }
       ],
       "view/item/context": [

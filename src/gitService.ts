@@ -32,7 +32,7 @@ export class GitService {
 
 		const changes: GitChange[] = [];
 		
-		// Working tree changes
+		// Working tree changes (unstaged)
 		for (const change of this.repo.state.workingTreeChanges) {
 			changes.push({
 				uri: change.uri,
@@ -41,11 +41,21 @@ export class GitService {
 			});
 		}
 
+		return changes;
+	}
+
+	getStagedChanges(): GitChange[] {
+		if (!this.repo) {
+			return [];
+		}
+
+		const changes: GitChange[] = [];
+		
 		// Index changes (staged)
 		for (const change of this.repo.state.indexChanges) {
 			changes.push({
 				uri: change.uri,
-				status: this.getStatusText(change.status) + ' (staged)',
+				status: this.getStatusText(change.status),
 				originalUri: change.originalUri
 			});
 		}
@@ -88,6 +98,18 @@ export class GitService {
 				await this.repo.revert([uri.fsPath]);
 			} catch (error) {
 				console.error('Error unstaging file:', error);
+				throw error;
+			}
+		}
+	}
+
+	async unstageFiles(uris: vscode.Uri[]) {
+		if (this.repo) {
+			try {
+				const paths = uris.map(uri => uri.fsPath);
+				await this.repo.revert(paths);
+			} catch (error) {
+				console.error('Error unstaging files:', error);
 				throw error;
 			}
 		}

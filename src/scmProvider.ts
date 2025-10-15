@@ -7,6 +7,7 @@ export class GitFolderSCMProvider {
 	private sourceControl: vscode.SourceControl;
 	private groups: Map<string, vscode.SourceControlResourceGroup> = new Map();
 	private ungroupedGroup: vscode.SourceControlResourceGroup;
+	private stagedGroup: vscode.SourceControlResourceGroup;
 
 	constructor(
 		private storageManager: StorageManager,
@@ -25,6 +26,13 @@ export class GitFolderSCMProvider {
 		};
 
 		this.sourceControl.quickDiffProvider = this.gitService.getRepository()?.quickDiff;
+
+		// Create staged changes group (appears first)
+		this.stagedGroup = this.sourceControl.createResourceGroup(
+			'__staged__',
+			'Staged Changes'
+		);
+		this.stagedGroup.hideWhenEmpty = true;
 
 		// Create ungrouped changes group
 		this.ungroupedGroup = this.sourceControl.createResourceGroup(
@@ -48,11 +56,30 @@ export class GitFolderSCMProvider {
 
 	async refresh() {
 		const allChanges = this.gitService.getAllChanges();
+		const stagedChanges = this.gitService.getStagedChanges();
 		const customGroups = await this.storageManager.getGroups();
 
 		// Clear existing custom groups
 		this.groups.forEach(group => group.dispose());
 		this.groups.clear();
+
+		// Update staged changes
+		const stagedResources: vscode.SourceControlResourceState[] = [];
+		for (const change of stagedChanges) {
+			stagedResources.push({
+				resourceUri: change.uri,
+				decorations: {
+					tooltip: `${change.status} (staged)`
+				},
+				command: {
+					command: 'vscode.open',
+					title: 'Open',
+					arguments: [change.uri]
+				},
+				contextValue: 'gitfolder:staged'
+			});
+		}
+		this.stagedGroup.resourceStates = stagedResources;
 
 		// Track which files are in custom groups
 		const filesInCustomGroups = new Set<string>();
@@ -106,29 +133,30 @@ export class GitFolderSCMProvider {
 		const ungroupedResources: vscode.SourceControlResourceState[] = [];
 		for (const change of allChanges) {
 			if (!filesInCustomGroups.has(change.uri.fsPath)) {
-			ungroupedResources.push({
-				resourceUri: change.uri,
-				decorations: {
-					tooltip: change.status
-				},
-				command: {
-					command: 'vscode.open',
-					title: 'Open',
-					arguments: [change.uri]
-				},
-				contextValue: 'gitfolder:ungrouped',
-				// Enable drag & drop
-				['__isUngrouped' as any]: true,
-				['__filePath' as any]: change.uri.fsPath
-			});
+				ungroupedResources.push({
+					resourceUri: change.uri,
+					decorations: {
+						tooltip: change.status
+					},
+					command: {
+						command: 'vscode.open',
+						title: 'Open',
+						arguments: [change.uri]
+					},
+					contextValue: 'gitfolder:ungrouped',
+					// Enable drag & drop
+					['__isUngrouped' as any]: true,
+					['__filePath' as any]: change.uri.fsPath
+				});
+			}
 		}
-	}
 
-	this.ungroupedGroup.resourceStates = ungroupedResources;
-	(this.ungroupedGroup as any).__isUngrouped = true;
-}	dispose() {
+		this.ungroupedGroup.resourceStates = ungroupedResources;
+		(this.ungroupedGroup as any).__isUngrouped = true;
+	}	dispose() {
 		this.disposables.forEach(d => d.dispose());
 		this.groups.forEach(group => group.dispose());
 		this.ungroupedGroup.dispose();
+		this.stagedGroup.dispose();
 	}
 }
