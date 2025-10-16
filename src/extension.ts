@@ -679,10 +679,29 @@ export function activate(context: vscode.ExtensionContext) {
 					return;
 				}
 
+				// Get the git extension to use its URI helper
+				const gitExtension = vscode.extensions.getExtension('vscode.git')?.exports;
+				if (!gitExtension) {
+					vscode.window.showErrorMessage('Git extension not available');
+					return;
+				}
+
+				const git = gitExtension.getAPI(1);
+				
+				// Create proper git URI for HEAD version
+				const headUri = uri.with({
+					scheme: 'git',
+					path: uri.path,
+					query: JSON.stringify({
+						path: uri.fsPath,
+						ref: 'HEAD'
+					})
+				});
+
 				// Open diff view
 				const title = `${uri.fsPath.split('/').pop()} (Working Tree)`;
 				await vscode.commands.executeCommand('vscode.diff', 
-					vscode.Uri.parse(`git:${uri.fsPath}?HEAD`),
+					headUri,
 					uri,
 					title
 				);
