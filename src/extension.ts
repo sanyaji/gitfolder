@@ -449,107 +449,83 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 
 				// Show progress
-				await vscode.window.withProgress({
+				const generatedMessage = await vscode.window.withProgress({
 					location: vscode.ProgressLocation.Notification,
-					title: "Generating commit message...",
+					title: "Generating commit message with AI...",
 					cancellable: false
 				}, async (progress) => {
 					try {
-						// Get file changes summary
-						const filesList = stagedChanges.map(change => {
-							const fileName = change.uri.fsPath.split('/').pop();
-							return `${change.status}: ${fileName}`;
-						}).join(', ');
-
-						// Try to use GitHub Copilot Chat API if available
-						const copilotExtension = vscode.extensions.getExtension('GitHub.copilot-chat');
-						if (copilotExtension && copilotExtension.isActive) {
-							// Use Copilot Chat API
-							const prompt = `Generate a concise git commit message for these changes: ${filesList}. 
-							Follow conventional commits format (type: description). 
-							Be specific about what was changed. Max 50 characters for title.`;
-							
-							// Try to invoke Copilot
-							try {
-								await vscode.commands.executeCommand('workbench.action.chat.open');
-								await vscode.commands.executeCommand('workbench.action.chat.submit', prompt);
-								vscode.window.showInformationMessage('Copilot opened with commit message prompt. Copy the generated message to commit input.');
-							} catch (error) {
-								// Fallback to manual generation
-								await generateManualCommitMessage(stagedChanges, filesList);
-							}
-						} else {
-							// Fallback to manual generation
-							await generateManualCommitMessage(stagedChanges, filesList);
+						// Try to use Language Model API (Copilot)
+						const message = await generateCommitMessage();
+						if (message) {
+							return message;
 						}
+						
+						// Fallback to smart generation
+						return await generateSmartCommitMessage(stagedChanges);
 					} catch (error) {
 						console.error('Error generating commit message:', error);
-						vscode.window.showErrorMessage(`Failed to generate commit message: ${error}`);
+						// Fallback to smart generation
+						return await generateSmartCommitMessage(stagedChanges);
 					}
 				});
+
+				if (generatedMessage) {
+					// Set the commit message in SCM input
+					scmProvider.sourceControl.inputBox.value = generatedMessage;
+					await vscode.commands.executeCommand('workbench.view.scm');
+					vscode.window.showInformationMessage(`Generated: "${generatedMessage}"`);
+				}
 
 			} catch (error) {
 				console.error('Error in gitfolder.generateCommitMessage:', error);
 				vscode.window.showErrorMessage(`Failed to generate commit message: ${error}`);
 			}
-
-			// Helper function for manual commit message generation
-			async function generateManualCommitMessage(stagedChanges: any[], filesList: string) {
-				// Smart commit message generation based on files
-				let commitType = 'feat';
-				let description = '';
-
-				// Analyze file patterns to determine commit type
-				const hasTests = stagedChanges.some(c => c.uri.fsPath.includes('test') || c.uri.fsPath.includes('spec'));
-				const hasDocs = stagedChanges.some(c => c.uri.fsPath.includes('README') || c.uri.fsPath.includes('.md'));
-				const hasConfig = stagedChanges.some(c => c.uri.fsPath.includes('config') || c.uri.fsPath.includes('.json'));
-				
-				if (hasTests) {
-					commitType = 'test';
-				} else if (hasDocs) {
-					commitType = 'docs';
-				} else if (hasConfig) {
-					commitType = 'config';
-				} else if (stagedChanges.length === 1) {
-					const fileName = stagedChanges[0].uri.fsPath.split('/').pop()?.toLowerCase() || '';
-					if (fileName.includes('fix') || fileName.includes('bug')) {
-						commitType = 'fix';
-					} else if (fileName.includes('style') || fileName.includes('css')) {
-						commitType = 'style';
-					}
-				}
-
-				// Generate description based on number of files
-				if (stagedChanges.length === 1) {
-					const fileName = stagedChanges[0].uri.fsPath.split('/').pop();
-					description = `update ${fileName}`;
-				} else {
-					description = `update ${stagedChanges.length} files`;
-				}
-
-				const generatedMessage = `${commitType}: ${description}`;
-
-				// Set the commit message in SCM input
-				const scmInputBox = vscode.scm.inputBox;
-				if (scmInputBox) {
-					scmInputBox.value = generatedMessage;
-					await vscode.commands.executeCommand('workbench.view.scm');
-					vscode.window.showInformationMessage(`Generated commit message: "${generatedMessage}"`);
-				} else {
-					// Fallback: show the message and let user copy
-					const action = await vscode.window.showInformationMessage(
-						`Generated commit message: "${generatedMessage}"`,
-						'Copy to Clipboard',
-						'OK'
-					);
-					if (action === 'Copy to Clipboard') {
-						await vscode.env.clipboard.writeText(generatedMessage);
-						vscode.window.showInformationMessage('Commit message copied to clipboard');
-					}
-				}
-			}
 		})
 	);
+
+	// Helper function for smart commit message generation
+	async function generateSmartCommitMessage(stagedChanges: any[]): Promise<string> {
+		let commitType = 'feat';
+		let description = '';
+
+		// Analyze file patterns to determine commit type
+		const hasTests = stagedChanges.some(c => c.uri.fsPath.includes('test') || c.uri.fsPath.includes('spec'));
+		const hasDocs = stagedChanges.some(c => c.uri.fsPath.includes('README') || c.uri.fsPath.includes('.md'));
+		const hasConfig = stagedChanges.some(c => c.uri.fsPath.includes('config') || c.uri.fsPath.includes('.json'));
+		const hasPackage = stagedChanges.some(c => c.uri.fsPath.includes('package.json'));
+		
+		if (hasTests) {
+			commitType = 'test';
+		} else if (hasDocs) {
+			commitType = 'docs';
+		} else if (hasConfig || hasPackage) {
+			commitType = 'chore';
+		} else if (stagedChanges.length === 1) {
+			const fileName = stagedChanges[0].uri.fsPath.split('/').pop()?.toLowerCase() || '';
+			if (fileName.includes('fix') || fileName.includes('bug')) {
+				commitType = 'fix';
+			} else if (fileName.includes('style') || fileName.includes('css')) {
+				commitType = 'style';
+			}
+		}
+
+		// Generate description based on number of files
+		if (stagedChanges.length === 1) {
+			const fileName = stagedChanges[0].uri.fsPath.split('/').pop();
+			description = `update ${fileName}`;
+		} else if (hasTests) {
+			description = `add/update tests`;
+		} else if (hasDocs) {
+			description = `update documentation`;
+		} else if (hasPackage) {
+			description = `update dependencies`;
+		} else {
+			description = `update ${stagedChanges.length} files`;
+		}
+
+		return `${commitType}: ${description}`;
+	}
 
 	// Unstage commands
 	context.subscriptions.push(
@@ -682,6 +658,97 @@ export function activate(context: vscode.ExtensionContext) {
 				await storageManager.addFileToGroup(selected.groupId, filePath);
 				scmProvider.refresh();
 				vscode.window.showInformationMessage(`Moved to "${selected.label}"`);
+			}
+		})
+	);
+
+	// Open changes (diff view)
+	context.subscriptions.push(
+		vscode.commands.registerCommand('gitfolder.openChanges', async (...args: any[]) => {
+			try {
+				let resourceState = args[0];
+				
+				if (!resourceState?.resourceUri) {
+					return;
+				}
+
+				const uri = resourceState.resourceUri;
+				const repo = gitService.getRepository();
+				
+				if (!repo) {
+					return;
+				}
+
+				// Open diff view
+				const title = `${uri.fsPath.split('/').pop()} (Working Tree)`;
+				await vscode.commands.executeCommand('vscode.diff', 
+					vscode.Uri.parse(`git:${uri.fsPath}?HEAD`),
+					uri,
+					title
+				);
+			} catch (error) {
+				console.error('Error opening changes:', error);
+				vscode.window.showErrorMessage(`Failed to open changes: ${error}`);
+			}
+		})
+	);
+
+	// Open file (override default to open in editor)
+	context.subscriptions.push(
+		vscode.commands.registerCommand('gitfolder.openFile', async (...args: any[]) => {
+			try {
+				let resourceState = args[0];
+				
+				if (!resourceState?.resourceUri) {
+					return;
+				}
+
+				await vscode.window.showTextDocument(resourceState.resourceUri);
+			} catch (error) {
+				console.error('Error opening file:', error);
+				vscode.window.showErrorMessage(`Failed to open file: ${error}`);
+			}
+		})
+	);
+
+	// Discard changes
+	context.subscriptions.push(
+		vscode.commands.registerCommand('gitfolder.discardChanges', async (...args: any[]) => {
+			try {
+				let resourceStates: vscode.SourceControlResourceState[] = [];
+				
+				if (args.length > 0) {
+					if (Array.isArray(args[0])) {
+						resourceStates = args[0];
+					} else if (args[0]?.resourceUri) {
+						resourceStates = args;
+					}
+				}
+
+				if (resourceStates.length === 0) {
+					vscode.window.showErrorMessage('No files to discard');
+					return;
+				}
+
+				// Confirm discard
+				const fileNames = resourceStates.map(r => r.resourceUri.fsPath.split('/').pop()).join(', ');
+				const confirm = await vscode.window.showWarningMessage(
+					`Are you sure you want to discard changes in ${resourceStates.length} file(s)?\n${fileNames}`,
+					{ modal: true },
+					'Discard Changes'
+				);
+
+				if (confirm !== 'Discard Changes') {
+					return;
+				}
+
+				const uris = resourceStates.map(r => r.resourceUri);
+				await gitService.discardAllChanges(uris);
+				scmProvider.refresh();
+				vscode.window.showInformationMessage(`Discarded changes in ${uris.length} file(s)`);
+			} catch (error) {
+				console.error('Error discarding changes:', error);
+				vscode.window.showErrorMessage(`Failed to discard changes: ${error}`);
 			}
 		})
 	);

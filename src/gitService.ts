@@ -127,6 +127,28 @@ export class GitService {
 		}
 	}
 
+	async discardChanges(uri: vscode.Uri) {
+		if (this.repo) {
+			try {
+				await this.repo.clean([uri]);
+			} catch (error) {
+				console.error('Error discarding changes:', error);
+				throw error;
+			}
+		}
+	}
+
+	async discardAllChanges(uris: vscode.Uri[]) {
+		if (this.repo) {
+			try {
+				await this.repo.clean(uris);
+			} catch (error) {
+				console.error('Error discarding changes:', error);
+				throw error;
+			}
+		}
+	}
+
 	onDidChangeState(callback: () => void): vscode.Disposable {
 		if (this.repo) {
 			return this.repo.state.onDidChange(callback);

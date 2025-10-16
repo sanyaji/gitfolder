@@ -72,9 +72,9 @@ export class GitFolderSCMProvider {
 					tooltip: `${change.status} (staged)`
 				},
 				command: {
-					command: 'vscode.open',
-					title: 'Open',
-					arguments: [change.uri]
+					command: 'gitfolder.openChanges',
+					title: 'Open Changes',
+					arguments: [{ resourceUri: change.uri }]
 				},
 				contextValue: 'gitfolder:staged'
 			});
@@ -107,9 +107,9 @@ export class GitFolderSCMProvider {
 							iconPath: icon ? new vscode.ThemeIcon('lock') : undefined
 						},
 						command: {
-							command: 'vscode.open',
-							title: 'Open',
-							arguments: [change.uri]
+							command: 'gitfolder.openChanges',
+							title: 'Open Changes',
+							arguments: [{ resourceUri: change.uri }]
 						},
 						contextValue: file.isLocal ? 'gitfolder:file:local' : 'gitfolder:file',
 						// Enable drag & drop
@@ -139,9 +139,9 @@ export class GitFolderSCMProvider {
 						tooltip: change.status
 					},
 					command: {
-						command: 'vscode.open',
-						title: 'Open',
-						arguments: [change.uri]
+						command: 'gitfolder.openChanges',
+						title: 'Open Changes',
+						arguments: [{ resourceUri: change.uri }]
 					},
 					contextValue: 'gitfolder:ungrouped',
 					// Enable drag & drop

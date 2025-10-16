@@ -120,6 +120,21 @@
       {
         "command": "gitfolder.moveToGroup",
         "title": "Move to Group"
+      },
+      {
+        "command": "gitfolder.openChanges",
+        "title": "Open Changes",
+        "icon": "$(git-compare)"
+      },
+      {
+        "command": "gitfolder.openFile",
+        "title": "Open File",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "gitfolder.discardChanges",
+        "title": "Discard Changes",
+        "icon": "$(discard)"
       }
     ],
     "menus": {
@@ -147,9 +162,23 @@
           "group": "inline"
         },
         {
+          "command": "gitfolder.unstage",
+          "when": "scmProvider == gitfolder && scmResourceState == gitfolder:staged",
+          "group": "inline"
+        },
+        {
           "command": "gitfolder.removeFromGroup",
           "when": "scmProvider == gitfolder && scmResourceState =~ /gitfolder:file/",
           "group": "inline"
+        },
+        {
+          "command": "gitfolder.openChanges",
+          "when": "scmProvider == gitfolder",
+          "group": "navigation"
+        },
+        {
+          "command": "gitfolder.openFile",
+          "when": "scmProvider == gitfolder"
         },
         {
           "command": "gitfolder.addToGroup",
@@ -160,9 +189,8 @@
           "when": "scmProvider == gitfolder && scmResourceState =~ /gitfolder:file/"
         },
         {
-          "command": "gitfolder.unstage",
-          "when": "scmProvider == gitfolder && scmResourceState == gitfolder:staged",
-          "group": "inline"
+          "command": "gitfolder.discardChanges",
+          "when": "scmProvider == gitfolder && scmResourceState =~ /gitfolder:(file|ungrouped)/"
         }
       ],
       "scm/resourceGroup/context": [
