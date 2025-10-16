@@ -22,8 +22,11 @@ export class GitFolderSCMProvider {
 
 		this.sourceControl.acceptInputCommand = {
 			command: 'gitfolder.commit',
-			title: 'Commit'
+			title: 'Commit',
+			arguments: [this.sourceControl]
 		};
+
+		this.sourceControl.inputBox.placeholder = 'Message (press Ctrl+Enter to commit)';
 
 		this.sourceControl.quickDiffProvider = this.gitService.getRepository()?.quickDiff;
 
@@ -175,6 +178,9 @@ export class GitFolderSCMProvider {
 
 		this.ungroupedGroup.resourceStates = ungroupedResources;
 		(this.ungroupedGroup as any).__isUngrouped = true;
+
+		// Update commit button state (show count of staged changes)
+		this.sourceControl.count = stagedChanges.length;
 	}	dispose() {
 		this.disposables.forEach(d => d.dispose());
 		this.groups.forEach(group => group.dispose());

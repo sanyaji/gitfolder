@@ -259,7 +259,15 @@
           "when": "view == gitfolderView && viewItem == ungrouped-file"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "command": "gitfolder.commit",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "scmProvider == gitfolder && scmInputIsInFocus"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
