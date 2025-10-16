@@ -9,6 +9,15 @@ export interface ChangeGroup {
 export interface FileItem {
 	path: string;
 	isLocal: boolean;
+	// For partial staging: store which hunks/lines belong to this group
+	hunks?: HunkSelection[];
+}
+
+export interface HunkSelection {
+	// Hunk index in the diff
+	hunkIndex: number;
+	// Which lines in this hunk are selected (true = include, false = exclude)
+	selectedLines?: number[];
 }
 
 export class StorageManager {

@@ -27,6 +27,9 @@ export class GitFolderSCMProvider {
 
 		this.sourceControl.quickDiffProvider = this.gitService.getRepository()?.quickDiff;
 
+		// Update status bar with repo and branch info
+		this.updateStatusBar();
+
 		// Create staged changes group (appears first)
 		this.stagedGroup = this.sourceControl.createResourceGroup(
 			'__staged__',
@@ -54,7 +57,26 @@ export class GitFolderSCMProvider {
 		this.refresh();
 	}
 
+	private updateStatusBar() {
+		const repo = this.gitService.getRepository();
+		if (repo) {
+			const branchName = repo.state.HEAD?.name || 'unknown';
+			const repoName = vscode.workspace.workspaceFolders?.[0].name || 'unknown';
+			
+			// Update source control label with branch info
+			this.sourceControl.statusBarCommands = [
+				{
+					command: 'gitfolder.showBranchPicker',
+					title: `$(git-branch) ${branchName}`,
+					tooltip: `Current branch: ${branchName}`
+				}
+			];
+		}
+	}
+
 	async refresh() {
+		// Update status bar on every refresh
+		this.updateStatusBar();
 		const allChanges = this.gitService.getAllChanges();
 		const stagedChanges = this.gitService.getStagedChanges();
 		const customGroups = await this.storageManager.getGroups();

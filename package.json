@@ -135,6 +135,10 @@
         "command": "gitfolder.discardChanges",
         "title": "Discard Changes",
         "icon": "$(discard)"
+      },
+      {
+        "command": "gitfolder.showBranchPicker",
+        "title": "Switch Branch"
       }
     ],
     "menus": {

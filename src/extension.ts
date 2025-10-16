@@ -752,6 +752,53 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		})
 	);
+
+	// Show branch picker
+	context.subscriptions.push(
+		vscode.commands.registerCommand('gitfolder.showBranchPicker', async () => {
+			try {
+				const repo = gitService.getRepository();
+				if (!repo) {
+					vscode.window.showErrorMessage('No git repository found');
+					return;
+				}
+
+				// Get all branches
+				const branches = repo.state.refs || [];
+				const currentBranch = repo.state.HEAD?.name;
+
+				if (branches.length === 0) {
+					vscode.window.showInformationMessage('No branches found');
+					return;
+				}
+
+				interface BranchItem {
+					label: string;
+					description?: string;
+					branchName: string;
+				}
+
+				const branchItems: BranchItem[] = branches.map((ref: any) => ({
+					label: ref.name === currentBranch ? `$(check) ${ref.name}` : ref.name || 'unknown',
+					description: ref.name === currentBranch ? 'Current branch' : ref.commit?.substring(0, 7),
+					branchName: ref.name || ''
+				}));
+
+				const selected = await vscode.window.showQuickPick(branchItems, {
+					placeHolder: `Current: ${currentBranch}. Select branch to checkout`
+				});
+
+				if (selected && selected.branchName !== currentBranch) {
+					await repo.checkout(selected.branchName);
+					vscode.window.showInformationMessage(`Switched to branch: ${selected.branchName}`);
+					scmProvider.refresh();
+				}
+			} catch (error) {
+				console.error('Error in branch picker:', error);
+				vscode.window.showErrorMessage(`Failed to switch branch: ${error}`);
+			}
+		})
+	);
 }
 
 export function deactivate() {}
