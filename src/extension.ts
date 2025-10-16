@@ -211,15 +211,6 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('gitfolder.openFile', async (item: any) => {
-			if (item && (item.type === 'file' || item.type === 'file-local')) {
-				const uri = vscode.Uri.file(item.filePath);
-				await vscode.window.showTextDocument(uri);
-			}
-		})
-	);
-
-	context.subscriptions.push(
 		vscode.commands.registerCommand('gitfolder.refresh', () => {
 			scmProvider.refresh();
 		})
