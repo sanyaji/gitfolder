@@ -108,6 +108,11 @@
         "title": "Commit"
       },
       {
+        "command": "gitfolder.generateCommitMessage",
+        "title": "Generate Commit Message with Copilot",
+        "icon": "$(sparkle)"
+      },
+      {
         "command": "gitfolder.removeFromGroup",
         "title": "Remove from Group",
         "icon": "$(remove)"
@@ -120,6 +125,11 @@
     "menus": {
       "scm/title": [
         {
+          "command": "gitfolder.generateCommitMessage",
+          "when": "scmProvider == gitfolder",
+          "group": "navigation"
+        },
+        {
           "command": "gitfolder.createGroup",
           "when": "scmProvider == gitfolder",
           "group": "navigation"
@@ -128,13 +138,6 @@
           "command": "gitfolder.refresh",
           "when": "scmProvider == gitfolder",
           "group": "navigation"
-        }
-      ],
-      "scm/resourceGroup/context": [
-        {
-          "command": "gitfolder.stageAll",
-          "when": "scmProvider == gitfolder",
-          "group": "inline"
         }
       ],
       "scm/resourceState/context": [
@@ -158,7 +161,8 @@
         },
         {
           "command": "gitfolder.unstage",
-          "when": "scmProvider == gitfolder && scmResourceState == gitfolder:staged"
+          "when": "scmProvider == gitfolder && scmResourceState == gitfolder:staged",
+          "group": "inline"
         }
       ],
       "scm/resourceGroup/context": [
@@ -171,6 +175,11 @@
           "command": "gitfolder.unstageAll",
           "when": "scmProvider == gitfolder && scmResourceGroup == __staged__",
           "group": "inline"
+        },
+        {
+          "command": "gitfolder.generateCommitMessage",
+          "when": "scmProvider == gitfolder && scmResourceGroup == __staged__",
+          "group": "navigation"
         }
       ],
       "view/item/context": [

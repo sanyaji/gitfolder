@@ -4,7 +4,7 @@ import { GitService, GitChange } from './gitService';
 
 export class GitFolderSCMProvider {
 	private disposables: vscode.Disposable[] = [];
-	private sourceControl: vscode.SourceControl;
+	public sourceControl: vscode.SourceControl;
 	private groups: Map<string, vscode.SourceControlResourceGroup> = new Map();
 	private ungroupedGroup: vscode.SourceControlResourceGroup;
 	private stagedGroup: vscode.SourceControlResourceGroup;

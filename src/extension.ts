@@ -26,6 +26,61 @@ export function activate(context: vscode.ExtensionContext) {
 	const scmProvider = new GitFolderSCMProvider(storageManager, gitService);
 	context.subscriptions.push(scmProvider);
 
+	// Helper function: Generate commit message using Copilot
+	async function generateCommitMessage(): Promise<string | undefined> {
+		try {
+			const repo = gitService.getRepository();
+			if (!repo) {
+				return undefined;
+			}
+
+			// Get staged changes diff
+			const stagedChanges = repo.state.indexChanges;
+			if (stagedChanges.length === 0) {
+				vscode.window.showWarningMessage('No staged changes to generate commit message');
+				return undefined;
+			}
+
+			// Build a summary of changes
+			const fileList = stagedChanges.map((c: any) => {
+				const fileName = c.uri.fsPath.split('/').pop();
+				return `- ${fileName}`;
+			}).join('\n');
+
+			// Use language model API (Copilot)
+			const models = await vscode.lm.selectChatModels({
+				vendor: 'copilot',
+				family: 'gpt-4o'
+			});
+
+			if (models.length === 0) {
+				vscode.window.showWarningMessage('Copilot is not available');
+				return undefined;
+			}
+
+			const model = models[0];
+			
+			const messages = [
+				vscode.LanguageModelChatMessage.User(
+					`Generate a concise git commit message for these file changes:\n${fileList}\n\nFollow conventional commit format (feat:, fix:, docs:, etc.). Be specific but brief. Return only the commit message, no explanations.`
+				)
+			];
+
+			const response = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
+			
+			let commitMessage = '';
+			for await (const chunk of response.text) {
+				commitMessage += chunk;
+			}
+
+			return commitMessage.trim();
+		} catch (error) {
+			console.error('Error generating commit message:', error);
+			vscode.window.showErrorMessage('Failed to generate commit message with Copilot');
+			return undefined;
+		}
+	}
+
 	// Register commands
 	context.subscriptions.push(
 		vscode.commands.registerCommand('gitfolder.createGroup', async () => {
@@ -336,9 +391,162 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('gitfolder.commit', async () => {
-			const repo = gitService.getRepository();
-			if (repo) {
-				await vscode.commands.executeCommand('git.commit');
+			try {
+				const repo = gitService.getRepository();
+				if (!repo) {
+					vscode.window.showErrorMessage('No git repository found');
+					return;
+				}
+
+				// Check if there are staged changes
+				const stagedChanges = gitService.getStagedChanges();
+				if (stagedChanges.length === 0) {
+					vscode.window.showInformationMessage('No staged changes to commit');
+					return;
+				}
+
+				// Get commit message from SCM input box
+				const scmInputBox = scmProvider.sourceControl.inputBox;
+				const commitMessage = scmInputBox.value.trim();
+
+				if (!commitMessage) {
+					vscode.window.showWarningMessage('Please enter a commit message');
+					await vscode.commands.executeCommand('workbench.view.scm');
+					return;
+				}
+
+				// Perform commit
+				await repo.commit(commitMessage);
+				
+				// Clear input box after successful commit
+				scmInputBox.value = '';
+				
+				// Refresh to show updated state
+				scmProvider.refresh();
+				
+				vscode.window.showInformationMessage(`Successfully committed ${stagedChanges.length} file(s)`);
+			} catch (error) {
+				console.error('Error in gitfolder.commit:', error);
+				vscode.window.showErrorMessage(`Failed to commit: ${error}`);
+			}
+		})
+	);
+
+	// Generate commit message with Copilot
+	context.subscriptions.push(
+		vscode.commands.registerCommand('gitfolder.generateCommitMessage', async () => {
+			try {
+				const repo = gitService.getRepository();
+				if (!repo) {
+					vscode.window.showErrorMessage('No git repository found');
+					return;
+				}
+
+				const stagedChanges = gitService.getStagedChanges();
+				if (stagedChanges.length === 0) {
+					vscode.window.showInformationMessage('No staged changes to generate commit message for');
+					return;
+				}
+
+				// Show progress
+				await vscode.window.withProgress({
+					location: vscode.ProgressLocation.Notification,
+					title: "Generating commit message...",
+					cancellable: false
+				}, async (progress) => {
+					try {
+						// Get file changes summary
+						const filesList = stagedChanges.map(change => {
+							const fileName = change.uri.fsPath.split('/').pop();
+							return `${change.status}: ${fileName}`;
+						}).join(', ');
+
+						// Try to use GitHub Copilot Chat API if available
+						const copilotExtension = vscode.extensions.getExtension('GitHub.copilot-chat');
+						if (copilotExtension && copilotExtension.isActive) {
+							// Use Copilot Chat API
+							const prompt = `Generate a concise git commit message for these changes: ${filesList}. 
+							Follow conventional commits format (type: description). 
+							Be specific about what was changed. Max 50 characters for title.`;
+							
+							// Try to invoke Copilot
+							try {
+								await vscode.commands.executeCommand('workbench.action.chat.open');
+								await vscode.commands.executeCommand('workbench.action.chat.submit', prompt);
+								vscode.window.showInformationMessage('Copilot opened with commit message prompt. Copy the generated message to commit input.');
+							} catch (error) {
+								// Fallback to manual generation
+								await generateManualCommitMessage(stagedChanges, filesList);
+							}
+						} else {
+							// Fallback to manual generation
+							await generateManualCommitMessage(stagedChanges, filesList);
+						}
+					} catch (error) {
+						console.error('Error generating commit message:', error);
+						vscode.window.showErrorMessage(`Failed to generate commit message: ${error}`);
+					}
+				});
+
+			} catch (error) {
+				console.error('Error in gitfolder.generateCommitMessage:', error);
+				vscode.window.showErrorMessage(`Failed to generate commit message: ${error}`);
+			}
+
+			// Helper function for manual commit message generation
+			async function generateManualCommitMessage(stagedChanges: any[], filesList: string) {
+				// Smart commit message generation based on files
+				let commitType = 'feat';
+				let description = '';
+
+				// Analyze file patterns to determine commit type
+				const hasTests = stagedChanges.some(c => c.uri.fsPath.includes('test') || c.uri.fsPath.includes('spec'));
+				const hasDocs = stagedChanges.some(c => c.uri.fsPath.includes('README') || c.uri.fsPath.includes('.md'));
+				const hasConfig = stagedChanges.some(c => c.uri.fsPath.includes('config') || c.uri.fsPath.includes('.json'));
+				
+				if (hasTests) {
+					commitType = 'test';
+				} else if (hasDocs) {
+					commitType = 'docs';
+				} else if (hasConfig) {
+					commitType = 'config';
+				} else if (stagedChanges.length === 1) {
+					const fileName = stagedChanges[0].uri.fsPath.split('/').pop()?.toLowerCase() || '';
+					if (fileName.includes('fix') || fileName.includes('bug')) {
+						commitType = 'fix';
+					} else if (fileName.includes('style') || fileName.includes('css')) {
+						commitType = 'style';
+					}
+				}
+
+				// Generate description based on number of files
+				if (stagedChanges.length === 1) {
+					const fileName = stagedChanges[0].uri.fsPath.split('/').pop();
+					description = `update ${fileName}`;
+				} else {
+					description = `update ${stagedChanges.length} files`;
+				}
+
+				const generatedMessage = `${commitType}: ${description}`;
+
+				// Set the commit message in SCM input
+				const scmInputBox = vscode.scm.inputBox;
+				if (scmInputBox) {
+					scmInputBox.value = generatedMessage;
+					await vscode.commands.executeCommand('workbench.view.scm');
+					vscode.window.showInformationMessage(`Generated commit message: "${generatedMessage}"`);
+				} else {
+					// Fallback: show the message and let user copy
+					const action = await vscode.window.showInformationMessage(
+						`Generated commit message: "${generatedMessage}"`,
+						'Copy to Clipboard',
+						'OK'
+					);
+					if (action === 'Copy to Clipboard') {
+						await vscode.env.clipboard.writeText(generatedMessage);
+						vscode.window.showInformationMessage('Commit message copied to clipboard');
+					}
+				}
 			}
 		})
 	);

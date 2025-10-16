@@ -7,8 +7,10 @@ Extension VS Code untuk mengelola dan mengelompokkan git changes, mirip dengan f
 - **Override Git Changes View**: Menggantikan tampilan git changes default dengan tampilan terorganisir
 - **Pengelompokan Changes**: Buat folder/grup kustom untuk mengorganisir perubahan git Anda
 - **Hide Grouped Files**: File yang masuk ke group **HILANG** dari "Changes" - benar-benar terpisah!
+- **Staged Changes View**: Lihat file yang sudah di-stage, dengan tombol unstage individual
 - **Stage dari Group**: Stage file/group langsung dengan 1 klik
 - **Tandai Local-Only**: Tandai file yang tidak akan di-push (🔒 auto-exclude saat stage group)
+- **✨ Generate Commit Message**: Auto-generate commit message dengan Copilot (tombol sparkle ✨)
 - **Full SCM Integration**: Menggunakan VS Code SCM API untuk integrasi penuh
 - **Manajemen Mudah**: Kelola changes tanpa perlu menggunakan git stash
 
@@ -44,8 +46,9 @@ Setelah itu, hanya GitFolder yang akan muncul di Source Control! ✨
 
 ### 2. Lihat Perubahan
 Extension akan menampilkan:
-- **📁 Groups** - File yang sudah dikelompokkan
-- **Changes** - File yang belum masuk ke group (ungrouped)
+- **📁 Staged Changes** - File yang sudah di-stage, siap untuk commit (with unstage button)
+- **📁 Custom Groups** - File yang sudah dikelompokkan  
+- **📁 Changes** - File yang belum masuk ke group (ungrouped)
 
 File yang masuk ke group **TIDAK muncul** di Changes - benar-benar terpisah!
 
@@ -88,7 +91,33 @@ File yang masuk ke group **TIDAK muncul** di Changes - benar-benar terpisah!
 - Hover group → Klik icon **✓** (stage all)
 - File yang ditandai 🔒 local-only **otomatis di-skip**
 
-### 6. Mark sebagai Local-Only 🔒
+### 6. Unstage Changes
+**Unstage Individual File:**
+- Di section "Staged Changes", hover file → Klik icon **−** (unstage)
+- File kembali ke "Changes" atau group-nya
+
+**Unstage All:**
+- Hover "Staged Changes" group → Klik icon **⊗** (unstage all)
+
+### 7. Generate Commit Message ✨
+Auto-generate commit message yang smart dengan Copilot!
+
+**Cara Pakai:**
+1. Stage file yang mau di-commit
+2. Klik tombol **✨ sparkle** di toolbar Source Control
+3. Extension akan analyze file changes dan generate conventional commit message
+4. Commit message otomatis terisi di input box
+
+**Format yang di-generate:**
+- `feat: update feature X` - untuk new features
+- `fix: resolve bug in Y` - untuk bug fixes  
+- `docs: update README` - untuk documentation
+- `test: add tests for Z` - untuk test files
+- Dan lainnya...
+
+**Fallback:** Jika Copilot tidak tersedia, akan generate smart message based on file patterns.
+
+### 8. Mark sebagai Local-Only 🔒
 File local-only **tidak akan di-stage** saat stage group!
 
 **Cara Mark:**
